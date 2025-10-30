@@ -1,83 +1,137 @@
-import { useState } from 'react';
-import { Stage, Layer, Line, Image as KonvaImage, Circle } from 'react-konva';
+import { useEffect, useRef, useState } from 'react';
+import { type RgbColor, RgbColorPicker } from 'react-colorful';
+import { Circle, Image as KonvaImage, Layer, Line, Stage } from 'react-konva';
 
+import type { Polygon } from '@interfaces/polygon.interface';
 import { Button, Stack } from '@mui/material';
+import { rgbWithAlpha } from '@utils/rgba.utils';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import useImage from 'use-image';
 
+const DEFAULT_POLY_COLOR: RgbColor = {
+	r: 240,
+	g: 18,
+	b: 18,
+};
+const STROKE_WIDTH = 2;
+const MIN_NUM_OF_POINTS = 3;
+const ALPHA = 0.3;
+
 export function CanvasArea() {
 	const [image] = useImage('https://picsum.photos/1920/1080');
-	const [stageSize] = useState({ width: 960, height: 540 });
-	const [points, setPoints] = useState<number[]>([]);
-	const [isPolygonClosed, setPolygonClosed] = useState(false);
+	const stageSize = useRef<{ width: number; height: number }>({ width: 960, height: 540 });
+	const lastPolyId = useRef(0);
+	const [selectedPolyId, setSelectedPolyId] = useState<number | null>(null);
+	const [polygons, setPolygons] = useState<Polygon[]>([]);
+	const [polyColor, setPolyColor] = useState<RgbColor>(DEFAULT_POLY_COLOR);
+	const [points, setPoints] = useState<number[][]>([]);
+
+	const getRgbWithAlpha = (rgbColor: RgbColor) => rgbWithAlpha(rgbColor, ALPHA);
+
+	useEffect(() => {}, []);
 
 	const handleClick = (e: KonvaEventObject<MouseEvent>) => {
-		if (isPolygonClosed) return;
-
 		const stage = e.target.getStage();
 		if (!stage) return;
 
 		const pointer = stage.getPointerPosition();
 
 		if (pointer) {
-			setPoints([...points, pointer.x, pointer.y]);
+			if (selectedPolyId !== null) {
+				setSelectedPolyId(null);
+			}
+
+			setPoints(oldPoints => [...oldPoints, [pointer.x, pointer.y]]);
 		}
 	};
 
 	const handleFinish = () => {
-		if (points.length >= 6) {
-			// at least 3 points (x,y pairs)
-			setPolygonClosed(true);
+		if (points.length >= MIN_NUM_OF_POINTS) {
+			setPolygons(oldPolygons => [
+				...oldPolygons,
+				{
+					id: lastPolyId.current,
+					name: '',
+					points: [...points],
+					color: getRgbWithAlpha(polyColor),
+				},
+			]);
+			lastPolyId.current++;
+			setPoints([]);
 		}
 	};
 
 	const handleReset = () => {
 		setPoints([]);
-		setPolygonClosed(false);
+	};
+
+	const handleDelete = () => {
+		setPolygons(oldPolygons => oldPolygons.filter(polygon => polygon.id !== selectedPolyId));
+		setSelectedPolyId(null);
 	};
 
 	return (
 		<Stack spacing={2}>
+			<RgbColorPicker color={polyColor} onChange={setPolyColor} />
 			<Stage
-				width={stageSize.width}
-				height={stageSize.height}
+				width={stageSize.current.width}
+				height={stageSize.current.height}
 				onClick={handleClick}
-				style={{ border: '1px solid #ccc', marginTop: '1rem' }}
 			>
+				{/* Background image */}
 				<Layer>
-					{/* Background image */}
 					{image && (
 						<KonvaImage
 							image={image}
-							width={stageSize.width}
-							height={stageSize.height}
+							width={stageSize.current.width}
+							height={stageSize.current.height}
 						/>
 					)}
+				</Layer>
 
-					{/* In-progress line or finished polygon */}
-					{points.length > 0 && (
+				<Layer>
+					{polygons.map((polygon: Polygon) => {
+						const isSelected = selectedPolyId === polygon.id;
+
+						return (
+							<Line
+								key={polygon.id}
+								points={polygon.points.flat()}
+								stroke={polygon.color}
+								strokeWidth={STROKE_WIDTH + (isSelected ? 2 : 0)}
+								dashEnabled={isSelected}
+								closed={true}
+								fill={polygon.color}
+								onClick={e => {
+									e.cancelBubble = true;
+									setSelectedPolyId(polygon.id);
+								}}
+								onMouseEnter={e => {
+									const container = e.target.getStage()?.container();
+									if (container) container.style.cursor = 'pointer';
+								}}
+								onMouseLeave={e => {
+									const container = e.target.getStage()?.container();
+									if (container) container.style.cursor = 'default';
+								}}
+							/>
+						);
+					})}
+
+					{/* In-progress line */}
+					{points?.length > 0 && (
 						<Line
-							points={points}
-							stroke="red"
-							strokeWidth={2}
-							closed={isPolygonClosed}
-							fill={isPolygonClosed ? 'rgba(255,0,0,0.2)' : undefined}
+							points={points.flat()}
+							stroke={getRgbWithAlpha(polyColor)}
+							strokeWidth={STROKE_WIDTH}
+							closed={false}
 						/>
 					)}
 
-					{/* Optional: show dots on each vertex */}
-					{points.length > 0 &&
-						points
-							.reduce(
-								(acc, curr, idx) => {
-									if (idx % 2 === 0) acc.push([points[idx], points[idx + 1]]);
-									return acc;
-								},
-								[] as [number, number][]
-							)
-							.map(([x, y], i) => (
-								<Circle key={i} x={x} y={y} radius={4} fill="red" />
-							))}
+					{/* Show dots on each vertex */}
+					{points.map(([x, y], i) => (
+						<Circle key={i} x={x} y={y} radius={4} fill={getRgbWithAlpha(polyColor)} />
+					))}
 				</Layer>
 			</Stage>
 
@@ -87,12 +141,20 @@ export function CanvasArea() {
 					variant="contained"
 					color="primary"
 					onClick={handleFinish}
-					disabled={points.length < 6 || isPolygonClosed}
+					disabled={points.length < MIN_NUM_OF_POINTS}
 				>
 					Finish Polygon
 				</Button>
-				<Button variant="outlined" onClick={handleReset}>
+				<Button variant="outlined" onClick={handleReset} disabled={!points?.length}>
 					Reset
+				</Button>
+				<Button
+					variant="outlined"
+					color="error"
+					onClick={handleDelete}
+					disabled={selectedPolyId === null}
+				>
+					Delete
 				</Button>
 			</Stack>
 		</Stack>
