@@ -1,0 +1,9 @@
+import axios from 'axios';
+import PQueue from 'p-queue';
+
+export const queue = new PQueue({ concurrency: 3 });
+
+export const api = axios.create({
+	baseURL: 'http://localhost:8000',
+	timeout: 10000,
+});

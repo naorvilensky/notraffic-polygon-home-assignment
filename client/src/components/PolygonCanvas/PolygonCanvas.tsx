@@ -3,7 +3,7 @@ import { Circle, Image as KonvaImage, Layer, Line, Stage } from 'react-konva';
 import type { Polygon } from '@interfaces/polygon.interface';
 import useImage from 'use-image';
 
-interface Props {
+export interface PolygonCanvasProps {
 	polygons: Polygon[];
 	points: number[][];
 	width: number;
@@ -21,7 +21,7 @@ export function PolygonCanvas({
 	selectedPolygonId,
 	onClick,
 	drawingColor,
-}: Props) {
+}: PolygonCanvasProps) {
 	const [image] = useImage('https://picsum.photos/1920/1080');
 
 	return (

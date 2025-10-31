@@ -11,7 +11,7 @@ interface Props {
 
 export function PolygonList({ polygons, selectedPolygonId, onSelect, onDelete }: Props) {
 	return (
-		<Table size="small">
+		<Table className="polygon-list" size="small">
 			<TableHead>
 				<TableRow>
 					<TableCell>Name</TableCell>
@@ -44,6 +44,7 @@ export function PolygonList({ polygons, selectedPolygonId, onSelect, onDelete }:
 						</TableCell>
 						<TableCell>
 							<IconButton
+								aria-label="delete"
 								size="small"
 								onClick={e => {
 									e.stopPropagation();

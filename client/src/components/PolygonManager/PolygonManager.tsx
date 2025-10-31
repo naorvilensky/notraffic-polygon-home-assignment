@@ -1,6 +1,7 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { RgbaColorPicker } from 'react-colorful';
 
+import { createPolygon, deletePolygon, fetchPolygons } from '@api/polygons';
 import { PolygonCanvas } from '@components/PolygonCanvas/PolygonCanvas';
 import { PolygonList } from '@components/PolygonList/PolygonList';
 import type { Polygon } from '@interfaces/polygon.interface';
@@ -30,30 +31,32 @@ export function PolygonManager() {
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const [newPolyName, setNewPolyName] = useState('');
 
-	/** Canvas click: add point */
+	useEffect(() => {
+		fetchPolygons().then((newPolygons: Polygon[]) => setPolygons(newPolygons));
+	}, []);
+
 	const handleCanvasClick = useCallback((x: number, y: number) => {
 		setSelectedPolygonId(null);
 		setPoints(prev => [...prev, [x, y]]);
 	}, []);
 
-	/** Finish drawing polygon -> open name dialog */
 	const handleFinish = useCallback(() => {
 		if (points.length >= MIN_POINTS) {
 			setIsDialogOpen(true);
 		}
 	}, [points]);
 
-	/** Save polygon after naming */
 	const handleSavePolygon = useCallback(() => {
-		setPolygons(prev => [
-			...prev,
-			{
-				id: lastPolyId.current,
-				name: newPolyName.trim(),
-				points: [...points],
-				color: drawingColor,
-			},
-		]);
+		const polygon = {
+			id: lastPolyId.current,
+			name: newPolyName.trim(),
+			points: [...points],
+			color: drawingColor,
+		};
+
+		createPolygon(polygon);
+
+		setPolygons(prev => [...prev, polygon]);
 
 		lastPolyId.current++;
 		setPoints([]);
@@ -61,16 +64,17 @@ export function PolygonManager() {
 		setIsDialogOpen(false);
 	}, [drawingColor, newPolyName, points]);
 
-	/** Select polygon from list */
 	const handleSelect = useCallback((id: number) => {
 		setSelectedPolygonId(id);
 	}, []);
 
-	/** Delete polygon */
 	const handleDelete = useCallback(
 		(id: number) => {
 			setPolygons(prev => prev.filter(p => p.id !== id));
-			if (selectedPolygonId === id) setSelectedPolygonId(null);
+			if (selectedPolygonId === id) {
+				deletePolygon(selectedPolygonId);
+				setSelectedPolygonId(null);
+			}
 		},
 		[selectedPolygonId]
 	);
