@@ -26,7 +26,7 @@ async def create_polygon(
 ):
     await asyncio.sleep(DELAY_SECONDS)
 
-    polygon = Polygon(name=data.name, points=data.points)
+    polygon = Polygon(name=data.name, color=data.color, points=data.points)
     session.add(polygon)
     session.commit()
     session.refresh(polygon)

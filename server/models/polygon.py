@@ -9,6 +9,7 @@ class Polygon(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(nullable=False, max_length=100)
+    color: str = Field(nullable=False, max_length=20)
 
     # Stored as JSONB column in Postgres
     points: List[List[float]] = Field(

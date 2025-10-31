@@ -5,6 +5,7 @@ import math
 
 class PolygonBase(BaseModel):
     name: str
+    color: str
     points: List[List[float]]
 
     @classmethod
@@ -14,6 +15,16 @@ class PolygonBase(BaseModel):
         if not v:
             raise ValueError("Name must not be empty")
         if len(v) > 100:
+            raise ValueError("Name must be at most 100 characters")
+        return v
+
+    @classmethod
+    @field_validator("color")
+    def validate_color(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Name must not be empty")
+        if len(v) > 20:
             raise ValueError("Name must be at most 100 characters")
         return v
 

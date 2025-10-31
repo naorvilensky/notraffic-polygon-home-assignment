@@ -13,6 +13,7 @@ import {
 	DialogTitle,
 	DialogContent,
 	DialogActions,
+	CircularProgress,
 } from '@mui/material';
 
 const DEFAULT_POLY_COLOR = 'rgba(240, 18, 18, 0.3)';
@@ -27,12 +28,27 @@ export function PolygonManager() {
 	const [points, setPoints] = useState<number[][]>([]);
 	const [selectedPolygonId, setSelectedPolygonId] = useState<number | null>(null);
 	const [drawingColor, setDrawingColor] = useState(DEFAULT_POLY_COLOR);
-
+	const [isSaving, setIsSaving] = useState(false);
+	const [isLoading, setIsLoading] = useState(false);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const [newPolyName, setNewPolyName] = useState('');
+	const [nameError, setNameError] = useState('');
 
 	useEffect(() => {
-		fetchPolygons().then((newPolygons: Polygon[]) => setPolygons(newPolygons));
+		setIsLoading(true);
+		fetchPolygons()
+			.then((newPolygons: Polygon[]) => {
+				setPolygons(existingPolygons => [
+					...newPolygons,
+					...existingPolygons.filter(
+						({ name }: Polygon) =>
+							!newPolygons.some(({ name: name2 }: Polygon) => name !== name2)
+					),
+				]);
+			})
+			.finally(() => {
+				setIsLoading(false);
+			});
 	}, []);
 
 	const handleCanvasClick = useCallback((x: number, y: number) => {
@@ -47,14 +63,27 @@ export function PolygonManager() {
 	}, [points]);
 
 	const handleSavePolygon = useCallback(() => {
+		const name = newPolyName.trim();
+
+		if (!name || polygons.some(p => p.name === name)) {
+			return;
+		}
+
 		const polygon = {
 			id: lastPolyId.current,
-			name: newPolyName.trim(),
+			name,
 			points: [...points],
 			color: drawingColor,
 		};
 
-		createPolygon(polygon);
+		setIsSaving(true);
+		createPolygon(polygon)
+			.then((savedPolygon: Polygon) => {
+				polygon.id = savedPolygon.id as number;
+			})
+			.finally(() => {
+				setIsSaving(false);
+			});
 
 		setPolygons(prev => [...prev, polygon]);
 
@@ -62,7 +91,7 @@ export function PolygonManager() {
 		setPoints([]);
 		setNewPolyName('');
 		setIsDialogOpen(false);
-	}, [drawingColor, newPolyName, points]);
+	}, [drawingColor, newPolyName, points, polygons]);
 
 	const handleSelect = useCallback((id: number) => {
 		setSelectedPolygonId(id);
@@ -79,16 +108,42 @@ export function PolygonManager() {
 		[selectedPolygonId]
 	);
 
+	const handleOnChangeName = useCallback(
+		(name: string) => {
+			setNewPolyName(name);
+
+			if (!name) {
+				setNameError("Name can't be empty");
+				return;
+			}
+
+			if (polygons.some(p => p.name === name)) {
+				setNameError('Name already exists');
+				return;
+			}
+
+			setNameError('');
+		},
+		[polygons]
+	);
+
 	return (
 		<Stack direction="row" spacing={4}>
 			{/* Canvas & controls */}
 			<Stack spacing={2} flex={1}>
-				<RgbaColorPicker
-					color={{ r: 240, g: 18, b: 18, a: 0.3 }}
-					onChange={({ r, g, b }) => {
-						setDrawingColor(`rgba(${r},${g},${b},0.3)`);
-					}}
-				/>
+				<Stack direction="row" justifyContent="space-between" flex={1}>
+					<RgbaColorPicker
+						color={{ r: 240, g: 18, b: 18, a: 0.3 }}
+						onChange={({ r, g, b }) => {
+							setDrawingColor(`rgba(${r},${g},${b},0.3)`);
+						}}
+					/>
+					<Stack spacing={2} alignContent="center" direction="row">
+						{isLoading && <div>Loading polygons...</div>}
+						{isSaving && <div>Saving polygons...</div>}
+						{(isLoading || isSaving) && <CircularProgress size={20} />}
+					</Stack>
+				</Stack>
 
 				<PolygonCanvas
 					width={STAGE_WIDTH}
@@ -116,7 +171,7 @@ export function PolygonManager() {
 			</Stack>
 
 			{/* Polygon list */}
-			<Stack sx={{ width: 320 }}>
+			<Stack>
 				<PolygonList
 					polygons={polygons}
 					selectedPolygonId={selectedPolygonId}
@@ -131,15 +186,19 @@ export function PolygonManager() {
 				<DialogContent>
 					<TextField
 						autoFocus
+						error={!!nameError}
 						label="Name"
+						placeholder="Enter polygon name"
+						helperText={nameError || ''}
 						fullWidth
+						margin="dense"
 						value={newPolyName}
-						onChange={e => setNewPolyName(e.target.value)}
+						onChange={e => handleOnChangeName(e.target.value)}
 					/>
 				</DialogContent>
 				<DialogActions>
 					<Button onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-					<Button onClick={handleSavePolygon} disabled={!newPolyName.trim()}>
+					<Button onClick={handleSavePolygon} disabled={!!nameError}>
 						Save
 					</Button>
 				</DialogActions>

@@ -48,7 +48,9 @@ export function PolygonList({ polygons, selectedPolygonId, onSelect, onDelete }:
 								size="small"
 								onClick={e => {
 									e.stopPropagation();
-									if (polygon.id !== null) onDelete(polygon.id);
+									if (polygon.id !== null) {
+										onDelete(polygon.id);
+									}
 								}}
 							>
 								<DeleteIcon fontSize="small" />

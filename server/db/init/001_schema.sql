@@ -3,6 +3,7 @@ create table if not exists polygons (
   id          bigserial primary key,
   name        text not null unique,
   points      jsonb not null,
+  color      text not null,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now(),
   constraint points_is_array check (jsonb_typeof(points) = 'array')
