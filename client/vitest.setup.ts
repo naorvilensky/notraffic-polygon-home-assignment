@@ -73,5 +73,5 @@ if (typeof HTMLCanvasElement !== 'undefined') {
 vi.mock('@api/polygons', () => ({
 	fetchPolygons: vi.fn(async () => []),
 	createPolygon: vi.fn(async () => ({ id: 1 })),
-	deletePolygon: vi.fn(async () => ({})),
+	removePolygon: vi.fn(async () => ({})),
 }));

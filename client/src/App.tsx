@@ -1,6 +1,8 @@
 import { PolygonManager } from '@components/PolygonManager/PolygonManager';
 import { Typography, Container, Stack } from '@mui/material';
 
+import { RequestQueueProvider } from './context/RequestQueueProvider';
+
 function App() {
 	return (
 		<Container sx={{ py: 4 }}>
@@ -9,7 +11,9 @@ function App() {
 					NoTraffic Polygon Manager
 				</Typography>
 
-				<PolygonManager />
+				<RequestQueueProvider>
+					<PolygonManager />
+				</RequestQueueProvider>
 			</Stack>
 		</Container>
 	);

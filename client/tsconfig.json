@@ -20,7 +20,8 @@
 			"@components/*": ["src/components/*"],
 			"@interfaces/*": ["src/interfaces/*"],
 			"@utils/*": ["src/utils/*"],
-			"@api/*": ["src/api/*"]
+			"@api/*": ["src/api/*"],
+			"@context/*": ["src/context/*"]
 		},
 		"types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"]
 	},

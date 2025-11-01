@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { RgbaColorPicker } from 'react-colorful';
 
-import { createPolygon, deletePolygon, fetchPolygons } from '@api/polygons';
 import { PolygonCanvas } from '@components/PolygonCanvas/PolygonCanvas';
 import { PolygonList } from '@components/PolygonList/PolygonList';
 import type { Polygon } from '@interfaces/polygon.interface';
@@ -15,6 +14,7 @@ import {
 	DialogActions,
 	CircularProgress,
 } from '@mui/material';
+import { usePolygonsApi } from '@src/hooks/usePolygonsApi';
 
 const DEFAULT_POLY_COLOR = 'rgba(240, 18, 18, 0.3)';
 const MIN_POINTS = 3;
@@ -24,35 +24,36 @@ const STAGE_HEIGHT = 540;
 export function PolygonManager() {
 	const lastPolyId = useRef(0);
 
+	const {
+		fetch: fetchPolygons,
+		create: createPolygon,
+		remove: removePolygon,
+		isFetching,
+		isCreating,
+		isRemoving,
+	} = usePolygonsApi();
 	const [polygons, setPolygons] = useState<Polygon[]>([]);
 	const [points, setPoints] = useState<number[][]>([]);
-	const [selectedPolygonId, setSelectedPolygonId] = useState<number | null>(null);
+	const [selectedPolygonName, setSelectedPolygonName] = useState<string>('');
 	const [drawingColor, setDrawingColor] = useState(DEFAULT_POLY_COLOR);
-	const [isSaving, setIsSaving] = useState(false);
-	const [isLoading, setIsLoading] = useState(false);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const [newPolyName, setNewPolyName] = useState('');
 	const [nameError, setNameError] = useState('');
 
 	useEffect(() => {
-		setIsLoading(true);
-		fetchPolygons()
-			.then((newPolygons: Polygon[]) => {
-				setPolygons(existingPolygons => [
-					...newPolygons,
-					...existingPolygons.filter(
-						({ name }: Polygon) =>
-							!newPolygons.some(({ name: name2 }: Polygon) => name !== name2)
-					),
-				]);
-			})
-			.finally(() => {
-				setIsLoading(false);
-			});
-	}, []);
+		fetchPolygons().then((newPolygons: Polygon[]) => {
+			setPolygons(existingPolygons => [
+				...newPolygons,
+				...existingPolygons.filter(
+					({ name }: Polygon) =>
+						!newPolygons.some(({ name: name2 }: Polygon) => name !== name2)
+				),
+			]);
+		});
+	}, [fetchPolygons]);
 
 	const handleCanvasClick = useCallback((x: number, y: number) => {
-		setSelectedPolygonId(null);
+		setSelectedPolygonName('');
 		setPoints(prev => [...prev, [x, y]]);
 	}, []);
 
@@ -76,14 +77,9 @@ export function PolygonManager() {
 			color: drawingColor,
 		};
 
-		setIsSaving(true);
-		createPolygon(polygon)
-			.then((savedPolygon: Polygon) => {
-				polygon.id = savedPolygon.id as number;
-			})
-			.finally(() => {
-				setIsSaving(false);
-			});
+		createPolygon(polygon).then((savedPolygon: Polygon) => {
+			polygon.id = savedPolygon.id as number;
+		});
 
 		setPolygons(prev => [...prev, polygon]);
 
@@ -91,21 +87,24 @@ export function PolygonManager() {
 		setPoints([]);
 		setNewPolyName('');
 		setIsDialogOpen(false);
-	}, [drawingColor, newPolyName, points, polygons]);
+	}, [drawingColor, newPolyName, points, polygons, createPolygon]);
 
-	const handleSelect = useCallback((id: number) => {
-		setSelectedPolygonId(id);
+	const handleSelect = useCallback((name: string) => {
+		setSelectedPolygonName(name);
 	}, []);
 
 	const handleDelete = useCallback(
-		(id: number) => {
-			setPolygons(prev => prev.filter(p => p.id !== id));
-			if (selectedPolygonId === id) {
-				deletePolygon(selectedPolygonId);
-				setSelectedPolygonId(null);
+		(polygon: Polygon) => {
+			setPolygons(prev => prev.filter(p => p.name !== polygon.name));
+
+			// only if the polygon has been saved to the backend
+			if (polygon.id !== null) {
+				removePolygon(polygon.id);
 			}
+
+			setSelectedPolygonName('');
 		},
-		[selectedPolygonId]
+		[removePolygon]
 	);
 
 	const handleOnChangeName = useCallback(
@@ -139,9 +138,12 @@ export function PolygonManager() {
 						}}
 					/>
 					<Stack spacing={2} alignContent="center" direction="row">
-						{isLoading && <div>Loading polygons...</div>}
-						{isSaving && <div>Saving polygons...</div>}
-						{(isLoading || isSaving) && <CircularProgress size={20} />}
+						{isFetching && <div>Loading polygons...</div>}
+						{isCreating && !isFetching && <div>Saving polygons...</div>}
+						{isRemoving && !isCreating && !isRemoving && (
+							<div>Deleting polygons...</div>
+						)}
+						{(isFetching || isCreating || isRemoving) && <CircularProgress size={20} />}
 					</Stack>
 				</Stack>
 
@@ -152,7 +154,8 @@ export function PolygonManager() {
 					points={points}
 					onClick={handleCanvasClick}
 					drawingColor={drawingColor}
-					selectedPolygonId={selectedPolygonId}
+					selectedPolygonName={selectedPolygonName}
+					onSelectPolygon={handleSelect}
 				/>
 
 				<Stack direction="row" spacing={2}>
@@ -174,7 +177,7 @@ export function PolygonManager() {
 			<Stack>
 				<PolygonList
 					polygons={polygons}
-					selectedPolygonId={selectedPolygonId}
+					selectedPolygonName={selectedPolygonName}
 					onSelect={handleSelect}
 					onDelete={handleDelete}
 				/>

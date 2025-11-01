@@ -15,7 +15,7 @@ export async function createPolygon(polygon: Omit<Polygon, 'id'>): Promise<Polyg
 	});
 }
 
-export async function deletePolygon(id: number): Promise<void> {
+export async function removePolygon(id: number): Promise<void> {
 	return queue.add(async () => {
 		await api.delete(`/polygons/${id}`);
 	});

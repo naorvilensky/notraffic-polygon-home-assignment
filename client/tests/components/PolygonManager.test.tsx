@@ -1,3 +1,5 @@
+import React from 'react';
+
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
@@ -5,28 +7,34 @@ import { vi } from 'vitest';
 import { PolygonCanvasProps } from '../../src/components/PolygonCanvas/PolygonCanvas';
 import { PolygonManager } from '../../src/components/PolygonManager/PolygonManager';
 
-// Mock the API layer so tests don't hit backend
-vi.mock('@api/polygons', () => ({
-	fetchPolygons: vi.fn().mockResolvedValue([]),
-	createPolygon: vi
-		.fn()
-		.mockResolvedValue({ id: 1, name: 'Triangle 1', points: [], color: '#ff0000' }),
-	deletePolygon: vi.fn().mockResolvedValue({}),
-}));
-
 // Mock PolygonCanvas to simulate finishing a polygon
 vi.mock('@components/PolygonCanvas/PolygonCanvas', () => ({
 	PolygonCanvas: (props: PolygonCanvasProps) => {
 		const { onClick } = props;
 
-		setTimeout(() => {
+		React.useEffect(() => {
 			onClick?.(100, 100);
 			onClick?.(200, 100);
 			onClick?.(150, 200);
-		}, 0);
+		}, [onClick]);
 
 		return <div role="presentation" data-testid="mock-canvas" />;
 	},
+}));
+
+// Mock useRequestQueue to avoid context setup
+vi.mock('@context/useRequestQueue', () => ({
+	useRequestQueue: () => ({
+		saving: 0,
+		loading: 0,
+		deleting: 0,
+		isSaving: false,
+		isLoading: false,
+		isDeleting: false,
+		isBusy: false,
+		increment: vi.fn(),
+		decrement: vi.fn(),
+	}),
 }));
 
 describe('PolygonManager', () => {

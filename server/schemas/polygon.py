@@ -2,6 +2,8 @@ from pydantic import BaseModel, field_validator
 from typing import List
 import math
 
+POINT_BOUND_X = 1920
+POINT_BOUND_Y = 1080
 
 class PolygonBase(BaseModel):
     name: str
@@ -42,8 +44,8 @@ class PolygonBase(BaseModel):
             if any(math.isnan(c) or math.isinf(c) for c in (x, y)):
                 raise ValueError("Coordinates must be finite numbers")
 
-            if not (0 <= x <= 1920) or not (0 <= y <= 1080):
-                raise ValueError("Point out of bounds (1920x1080)")
+            if not (0 <= x <= POINT_BOUND_X) or not (0 <= y <= POINT_BOUND_Y):
+                raise ValueError(f"Point out of bounds ({POINT_BOUND_X}X{POINT_BOUND_Y})")
         return points
 
 

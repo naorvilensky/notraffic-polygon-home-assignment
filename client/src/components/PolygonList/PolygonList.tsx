@@ -4,12 +4,12 @@ import { Table, TableBody, TableCell, TableHead, TableRow, IconButton } from '@m
 
 interface Props {
 	polygons: Polygon[];
-	selectedPolygonId: number | null;
-	onSelect: (id: number) => void;
-	onDelete: (id: number) => void;
+	selectedPolygonName: string;
+	onSelect: (name: string) => void;
+	onDelete: (polygon: Polygon) => void;
 }
 
-export function PolygonList({ polygons, selectedPolygonId, onSelect, onDelete }: Props) {
+export function PolygonList({ polygons, selectedPolygonName, onSelect, onDelete }: Props) {
 	return (
 		<Table className="polygon-list" size="small">
 			<TableHead>
@@ -25,8 +25,8 @@ export function PolygonList({ polygons, selectedPolygonId, onSelect, onDelete }:
 					<TableRow
 						key={polygon.id}
 						hover
-						selected={selectedPolygonId === polygon.id}
-						onClick={() => polygon.id !== null && onSelect(polygon.id)}
+						selected={selectedPolygonName === polygon.name}
+						onClick={() => onSelect(polygon.name)}
 						sx={{ cursor: 'pointer' }}
 					>
 						<TableCell>{polygon.name}</TableCell>
@@ -48,9 +48,7 @@ export function PolygonList({ polygons, selectedPolygonId, onSelect, onDelete }:
 								size="small"
 								onClick={e => {
 									e.stopPropagation();
-									if (polygon.id !== null) {
-										onDelete(polygon.id);
-									}
+									onDelete(polygon);
 								}}
 							>
 								<DeleteIcon fontSize="small" />
